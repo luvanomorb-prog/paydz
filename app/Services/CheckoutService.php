@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\CheckoutSession;
+use App\Models\Payment;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 
@@ -13,45 +15,67 @@ class CheckoutService
     public function create(array $data)
     {
 
-        return CheckoutSession::create([
+        return DB::transaction(function () use ($data) {
 
-            'merchant_id' => $data['merchant_id'],
 
-            'payment_id' => $data['payment_id'],
+            $payment = Payment::findOrFail(
+                $data['payment_id']
+            );
 
-            'session_id' =>
-                'cs_' . Str::random(32),
 
-            'product_name' =>
-                $data['product_name'] ?? null,
+            $session = CheckoutSession::create([
 
-            'description' =>
-                $data['description'] ?? null,
+                'merchant_id' =>
+                    $payment->merchant_id,
 
-            'success_url' =>
-                $data['success_url'] ?? null,
+                'payment_id' =>
+                    $payment->id,
 
-            'cancel_url' =>
-                $data['cancel_url'] ?? null,
+                'session_id' =>
+                    'cs_' . Str::random(32),
 
-            'status' => 'open',
+                'product_name' =>
+                    $data['product_name'] ?? 
+                    $payment->description,
 
-            'expires_at' =>
-                Carbon::now()->addHours(24),
+                'description' =>
+                    $payment->description,
 
-        ]);
+                'success_url' =>
+                    $data['success_url'] ?? null,
+
+                'cancel_url' =>
+                    $data['cancel_url'] ?? null,
+
+                'status' =>
+                    'open',
+
+                'expires_at' =>
+                    Carbon::now()->addHours(24),
+
+            ]);
+
+
+            return $session;
+
+        });
 
     }
 
 
 
-    public function findBySession($session)
+    public function find($session)
     {
 
-        return CheckoutSession::where(
+        return CheckoutSession::with([
+            'payment',
+            'merchant'
+        ])
+        ->where(
             'session_id',
             $session
-        )->firstOrFail();
+        )
+        ->firstOrFail();
 
     }
 

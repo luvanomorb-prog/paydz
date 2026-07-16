@@ -38,14 +38,19 @@ class CheckoutSession extends Model
 
     public function payment()
     {
-        return $this->belongsTo(Payment::class);
+        return $this->belongsTo(
+            Payment::class
+        );
     }
 
 
 
     public function merchant()
     {
-        return $this->belongsTo(Merchant::class);
+        return $this->belongsTo(
+            Merchant::class
+        );
     }
 
 }
+
