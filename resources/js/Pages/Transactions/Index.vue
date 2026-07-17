@@ -1,72 +1,102 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import DashboardLayout from '@/Layouts/DashboardLayout.vue'
 
 defineProps({
-    transactions: Object
-});
+    transactions:Object
+})
 </script>
 
 
 <template>
-    <div class="p-6">
 
-        <h1 class="text-2xl font-bold mb-6">
-            Transactions
-        </h1>
+<DashboardLayout>
 
+<div class="p-6">
 
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-
-            <table class="w-full">
-
-                <thead>
-                    <tr class="border-b">
-                        <th class="p-4 text-left">ID</th>
-                        <th class="p-4 text-left">Amount</th>
-                        <th class="p-4 text-left">Status</th>
-                        <th class="p-4 text-left">Date</th>
-                    </tr>
-                </thead>
+<h1 class="text-2xl font-bold mb-6">
+Transactions
+</h1>
 
 
-                <tbody>
+<div class="bg-white rounded-xl shadow">
 
-                    <tr 
-                    v-for="transaction in transactions.data"
-                    :key="transaction.id"
-                    class="border-b hover:bg-gray-50">
+<table class="w-full">
 
-                        <td class="p-4">
-                            <Link 
-                            :href="`/transactions/${transaction.id}`"
-                            class="text-blue-600">
-                                #{{transaction.id}}
-                            </Link>
-                        </td>
+<thead>
+<tr class="border-b">
+
+<th class="p-4 text-left">
+ID
+</th>
+
+<th class="p-4">
+Amount
+</th>
+
+<th class="p-4">
+Method
+</th>
+
+<th class="p-4">
+Status
+</th>
+
+<th class="p-4">
+Date
+</th>
+
+</tr>
+</thead>
 
 
-                        <td class="p-4">
-                            {{transaction.amount}}
-                        </td>
+<tbody>
+
+<tr
+v-for="tx in transactions.data"
+:key="tx.id"
+class="border-b"
+>
+
+<td class="p-4">
+#{{tx.id}}
+</td>
 
 
-                        <td class="p-4">
-                            {{transaction.status}}
-                        </td>
+<td class="p-4">
+{{tx.amount}} DZD
+</td>
 
 
-                        <td class="p-4">
-                            {{transaction.created_at}}
-                        </td>
+<td class="p-4">
+{{tx.method}}
+</td>
 
 
-                    </tr>
+<td class="p-4">
 
-                </tbody>
+<span>
+{{tx.status}}
+</span>
 
-            </table>
+</td>
 
-        </div>
 
-    </div>
+<td class="p-4">
+{{tx.created_at}}
+</td>
+
+
+</tr>
+
+</tbody>
+
+
+</table>
+
+</div>
+
+</div>
+
+</DashboardLayout>
+
 </template>

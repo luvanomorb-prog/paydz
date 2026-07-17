@@ -2,29 +2,64 @@
 
 namespace App\Services;
 
-use App\Models\ApiKey;
-use App\Models\Merchant;
-use Illuminate\Support\Facades\Hash;
+
 use Illuminate\Support\Str;
+use App\Models\ApiKey;
+
+
 
 class ApiKeyService
 {
-    public function create(Merchant $merchant, string $name = 'Default'): array
-    {
-        $publicKey = 'pk_live_' . Str::random(40);
-        $secretKey = 'sk_live_' . Str::random(64);
 
-        ApiKey::create([
-            'merchant_id' => $merchant->id,
-            'name' => $name,
-            'public_key' => $publicKey,
-            'secret_key_hash' => Hash::make($secretKey),
-            'active' => true,
-        ]);
 
-        return [
-            'public_key' => $publicKey,
-            'secret_key' => $secretKey,
-        ];
-    }
+public function create($merchant)
+{
+
+
+return ApiKey::create([
+
+
+'merchant_id'=>$merchant->id,
+
+
+'public_key'=>
+'pk_paydz_'.Str::random(24),
+
+
+'secret_key'=>
+'sk_paydz_'.Str::random(48),
+
+
+]);
+
+
+}
+
+
+
+
+public function regenerate($merchant)
+{
+
+
+$key=$merchant->apiKey;
+
+
+$key->update([
+
+
+'secret_key'=>
+'sk_paydz_'.Str::random(48)
+
+
+]);
+
+
+return $key;
+
+
+}
+
+
+
 }

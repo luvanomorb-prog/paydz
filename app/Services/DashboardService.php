@@ -8,36 +8,53 @@ use App\Models\Transaction;
 
 class DashboardService
 {
-    public function getData(int $userId): array
+    public function getData(int $merchantId): array
     {
-        $merchant = Merchant::where('user_id', $userId)
-            ->firstOrFail();
+        $merchant = Merchant::findOrFail($merchantId);
 
-        $payments = Payment::where('merchant_id', $merchant->id)
+        $payments = Payment::where('merchant_id', $merchant->id);
+
+        $totalRevenue = (clone $payments)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $todayRevenue = Payment::where('merchant_id', $merchant->id)
+            ->where('status', 'paid')
+            ->whereDate('created_at', today())
+            ->sum('amount');
+
+        $totalPayments = (clone $payments)->count();
+
+        $paidPayments = (clone $payments)
+            ->where('status', 'paid')
+            ->count();
+
+        $pendingPayments = (clone $payments)
+            ->where('status', 'pending')
+            ->count();
+
+        $failedPayments = (clone $payments)
+            ->where('status', 'failed')
+            ->count();
+
+        $recentTransactions = Transaction::where('merchant_id', $merchant->id)
             ->latest()
             ->take(10)
             ->get();
 
-        $stats = [
-            'payments' => Payment::where('merchant_id', $merchant->id)->count(),
-
-            'transactions' => Transaction::whereHas('payment', function ($query) use ($merchant) {
-                $query->where('merchant_id', $merchant->id);
-            })->count(),
-
-            'revenue' => Payment::where('merchant_id', $merchant->id)
-                ->where('status', 'paid')
-                ->sum('amount'),
-
-            'pending' => Payment::where('merchant_id', $merchant->id)
-                ->where('status', 'pending')
-                ->count(),
-        ];
-
         return [
             'merchant' => $merchant,
-            'payments' => $payments,
-            'stats' => $stats,
+
+            'stats' => [
+                'today_revenue' => $todayRevenue,
+                'total_revenue' => $totalRevenue,
+                'total_payments' => $totalPayments,
+                'paid_payments' => $paidPayments,
+                'pending_payments' => $pendingPayments,
+                'failed_payments' => $failedPayments,
+            ],
+
+            'recent_transactions' => $recentTransactions,
         ];
     }
 }

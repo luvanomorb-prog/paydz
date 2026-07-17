@@ -14,6 +14,16 @@ return [
     |
     */
 
+'payment' => [
+    'default' => env('PAYMENT_GATEWAY_DEFAULT', 'mock'),
+],
+
+'satim' => [
+    'base_url'    => env('SATIM_BASE_URL'),
+    'merchant_id' => env('SATIM_MERCHANT_ID'),
+    'password'    => env('SATIM_PASSWORD'),
+],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

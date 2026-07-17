@@ -3,26 +3,67 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use App\Services\DashboardService;
+use App\Models\Merchant;
+use App\Models\Payment;
+use App\Models\Transaction;
 
 class DashboardController extends Controller
 {
-    protected DashboardService $dashboardService;
-
-    public function __construct(DashboardService $dashboardService)
-    {
-        $this->dashboardService = $dashboardService;
-    }
-
     public function index(Request $request)
     {
-        $data = $this->dashboardService->getData($request->user()->id);
 
-        return Inertia::render('Dashboard', [
-            'merchant' => $data['merchant'],
-            'stats' => $data['stats'],
-            'payments' => $data['payments'],
+        $user = auth()->user();
+
+
+        $merchant = Merchant::where('user_id', $user->id)
+            ->first();
+
+
+        if (!$merchant) {
+
+            return response()->json([
+                'message'=>'Merchant account not found',
+                'user_id'=>$user->id,
+                'email'=>$user->email
+            ],404);
+
+        }
+
+
+        $payments = Payment::where('merchant_id',$merchant->id)
+            ->latest()
+            ->limit(10)
+            ->get();
+
+
+        $transactions = Transaction::where('merchant_id',$merchant->id)
+            ->latest()
+            ->limit(10)
+            ->get();
+
+
+
+        return inertia('Dashboard',[
+            
+            'merchant'=>$merchant,
+
+            'stats'=>[
+
+                'payments'=>Payment::where('merchant_id',$merchant->id)->count(),
+
+                'transactions'=>Transaction::where('merchant_id',$merchant->id)->count(),
+
+                'revenue'=>Payment::where('merchant_id',$merchant->id)
+                    ->where('status','paid')
+                    ->sum('amount'),
+
+            ],
+
+            'payments'=>$payments,
+
+            'transactions'=>$transactions
+
         ]);
+
     }
 }

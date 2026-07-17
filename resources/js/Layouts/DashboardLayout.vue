@@ -1,50 +1,24 @@
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import Sidebar from '@/Components/Dashboard/Sidebar.vue'
+import Topbar from '@/Components/Dashboard/Topbar.vue'
 </script>
 
 <template>
+<div class="min-h-screen bg-slate-100">
 
-<div class="min-h-screen bg-gray-100">
+    <Sidebar />
 
-    <aside class="fixed left-0 top-0 w-64 h-screen bg-slate-900 text-white">
+    <div class="ml-64">
 
-        <div class="p-6 text-2xl font-bold border-b border-slate-700">
-            PayDZ
-        </div>
+        <Topbar />
 
-        <nav class="p-4 space-y-2">
+        <main class="p-8">
 
-            <Link
-                href="/dashboard"
-                class="block px-4 py-3 rounded-lg hover:bg-slate-800"
-            >
-                Dashboard
-            </Link>
+            <slot />
 
-            <Link
-                href="/payments"
-                class="block px-4 py-3 rounded-lg hover:bg-slate-800"
-            >
-                Payments
-            </Link>
+        </main>
 
-            <Link
-                href="/profile"
-                class="block px-4 py-3 rounded-lg hover:bg-slate-800"
-            >
-                Profile
-            </Link>
-
-        </nav>
-
-    </aside>
-
-    <main class="ml-64 p-8">
-
-        <slot />
-
-    </main>
+    </div>
 
 </div>
-
 </template>

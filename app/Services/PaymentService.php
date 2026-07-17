@@ -3,75 +3,151 @@
 namespace App\Services;
 
 use App\Models\Payment;
+use App\Models\Merchant;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
+
     /**
-     * إنشاء دفعة جديدة.
+     * Create Payment
      */
-    public function create(array $data): Payment
+    public function createPayment(array $data)
     {
-        $payment = Payment::create([
-            'merchant_id'        => $data['merchant_id'],
-            'payment_id'         => 'PDZ_' . strtoupper(Str::random(20)),
-            'amount'             => $data['amount'],
-            'currency'           => $data['currency'] ?? 'DZD',
-            'customer_email'     => $data['customer_email'] ?? null,
-            'customer_name'      => $data['customer_name'] ?? null,
-            'description'        => $data['description'] ?? null,
-            'status'             => 'pending',
-            'provider'           => null,
-            'provider_reference' => null,
-            'metadata'           => $data['metadata'] ?? null,
+        return DB::transaction(function () use ($data) {
+
+
+            // Check merchant
+            $merchant = Merchant::findOrFail($data['merchant_id']);
+
+
+            // Create Payment ID
+            $paymentIntentId = 'pi_PDZ_' . strtoupper(Str::random(18));
+
+
+            // Create payment
+            $payment = Payment::create([
+
+                'merchant_id' => $merchant->id,
+
+                'payment_id' => $paymentIntentId,
+
+                'amount' => $data['amount'],
+
+                'currency' => $data['currency'] ?? 'DZD',
+
+                'customer_email' => $data['customer_email'],
+
+                'customer_name' => $data['customer_name'] ?? null,
+
+                'description' => $data['description'] ?? null,
+
+                'status' => 'pending',
+
+                'provider' => null,
+
+                'provider_reference' => null,
+
+                'metadata' => $data['metadata'] ?? null,
+
+            ]);
+
+
+
+            // Create Transaction
+            $transaction = Transaction::create([
+
+                'payment_id' => $payment->id,
+
+                'transaction_id' =>
+                    'TXN_PDZ_' . strtoupper(Str::random(16)),
+
+                'provider' => 'MOCK',
+
+                'provider_reference' =>
+                    'MOCK_' . strtoupper(Str::random(12)),
+
+                'amount' => $payment->amount,
+
+                'currency' => $payment->currency,
+
+                'status' => 'paid',
+
+                'paid_at' => now(),
+
+            ]);
+
+
+
+            // Update payment status
+
+            $payment->update([
+
+                'status' => 'paid',
+
+                'provider' => 'MOCK',
+
+                'provider_reference' =>
+                    $transaction->provider_reference,
+
+            ]);
+
+
+
+            // Return with transaction
+
+            return $payment->load('transaction');
+
+        });
+    }
+
+
+
+
+    /**
+     * Get Payment
+     */
+    public function getPayment($paymentId)
+    {
+        return Payment::where('payment_id', $paymentId)
+            ->with('transaction')
+            ->firstOrFail();
+    }
+
+
+
+
+    /**
+     * Update Payment Status
+     */
+    public function updateStatus($paymentId, $status)
+    {
+        $payment = Payment::where('payment_id', $paymentId)
+            ->firstOrFail();
+
+
+        $payment->update([
+            'status' => $status
         ]);
 
-        $transaction = Transaction::create([
-            'payment_id'         => $payment->id,
-            'transaction_id'     => 'TRX_' . strtoupper(Str::random(20)),
-            'provider'           => null,
-            'provider_reference' => null,
-            'amount'             => $payment->amount,
-            'currency'           => $payment->currency,
-            'status'             => 'pending',
-            'failure_reason'     => null,
-            'metadata'           => null,
-            'paid_at'            => null,
-        ]);
-
-        $payment->setRelation('transaction', $transaction);
 
         return $payment;
     }
 
-    /**
-     * قائمة المدفوعات.
-     */
-    public function list(int $merchantId, ?string $search = null)
-    {
-        return Payment::query()
-            ->where('merchant_id', $merchantId)
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('payment_id', 'like', "%{$search}%")
-                      ->orWhere('customer_name', 'like', "%{$search}%")
-                      ->orWhere('customer_email', 'like', "%{$search}%");
-                });
-            })
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
-    }
+
+
 
     /**
-     * جلب دفعة واحدة.
+     * Merchant Payments
      */
-    public function find(int $merchantId, string $paymentId): Payment
+    public function merchantPayments($merchantId)
     {
-        return Payment::with('transaction')
-            ->where('merchant_id', $merchantId)
-            ->where('payment_id', $paymentId)
-            ->firstOrFail();
+        return Payment::where('merchant_id', $merchantId)
+            ->with('transaction')
+            ->latest()
+            ->get();
     }
+
 }

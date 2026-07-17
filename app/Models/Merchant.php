@@ -4,15 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\User;
-use App\Models\ApiKey;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Transaction;
 use App\Models\Payment;
+use App\Models\ApiKey;
+use App\Models\WebhookEndpoint;
 
 class Merchant extends Model
 {
+
     use HasFactory;
 
+
     protected $fillable = [
+
         'user_id',
         'business_name',
         'business_email',
@@ -20,33 +25,46 @@ class Merchant extends Model
         'country',
         'status',
         'kyc_verified',
+        'api_key',
+        'webhook_secret',
+        'webhook_url'
+
     ];
+
+
 
     protected $casts = [
-        'kyc_verified' => 'boolean',
+
+        'kyc_verified'=>'boolean'
+
     ];
 
-    /**
-     * Owner of the merchant account.
-     */
-    public function user()
+
+
+    public function transactions(): HasMany
     {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(Transaction::class);
     }
 
-    /**
-     * Merchant API Keys.
-     */
-    public function apiKeys()
+
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+
+
+    public function apiKeys(): HasMany
     {
         return $this->hasMany(ApiKey::class);
     }
 
-    /**
-     * Merchant Payments.
-     */
-    public function payments()
+
+
+    public function webhookEndpoints(): HasMany
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(WebhookEndpoint::class);
     }
+
 }

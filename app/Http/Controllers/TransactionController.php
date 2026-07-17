@@ -2,34 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\TransactionService;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TransactionController extends Controller
 {
-    protected TransactionService $transactionService;
-
-    public function __construct(TransactionService $transactionService)
+    public function index()
     {
-        $this->transactionService = $transactionService;
-    }
-
-    public function index(Request $request)
-    {
-        $transactions = $this->transactionService->getTransactions(
-            $request->all()
-        );
+        $transactions = Transaction::latest()
+            ->paginate(20);
 
         return Inertia::render('Transactions/Index', [
             'transactions' => $transactions
         ]);
     }
 
-    public function show($id)
-    {
-        $transaction = $this->transactionService->find($id);
 
+    public function show(Transaction $transaction)
+    {
         return Inertia::render('Transactions/Show', [
             'transaction' => $transaction
         ]);

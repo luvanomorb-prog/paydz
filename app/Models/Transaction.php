@@ -3,45 +3,37 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 class Transaction extends Model
 {
-    use HasFactory;
 
 
-    protected $fillable = [
+protected $fillable=[
 
-        'payment_id',
-        'transaction_id',
-        'provider',
-        'provider_reference',
-        'amount',
-        'currency',
-        'status',
-        'failure_reason',
-        'metadata',
-        'paid_at',
+'merchant_id',
+'payment_id',
+'type',
+'amount',
+'currency',
+'status',
+'reference'
 
-    ];
+];
 
 
 
-    protected $casts = [
-
-        'metadata' => 'array',
-        'paid_at' => 'datetime',
-
-    ];
+public function merchant()
+{
+    return $this->belongsTo(Merchant::class);
+}
 
 
 
-    public function payment()
-    {
-        return $this->belongsTo(
-            Payment::class
-        );
-    }
+public function payment()
+{
+    return $this->belongsTo(Payment::class);
+}
+
 
 }

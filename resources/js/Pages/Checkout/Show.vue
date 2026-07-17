@@ -1,67 +1,159 @@
 <script setup>
 
-defineProps({
+import {ref} from 'vue'
+import axios from 'axios'
 
-    checkout:Object
 
-});
+const props = defineProps({
+
+paymentLink:Object,
+
+qrCode:String
+
+})
+
+
+const loading = ref(false)
+
+
+
+function pay(){
+
+
+loading.value=true
+
+
+axios.post(
+'/pay/'+props.paymentLink.public_id+'/process'
+)
+.then(res=>{
+
+
+alert(
+'Payment started'
+)
+
+
+})
+.finally(()=>{
+
+loading.value=false
+
+})
+
+
+}
+
+
 
 </script>
 
 
+
 <template>
 
-<div class="min-h-screen bg-gray-100 flex items-center justify-center">
+
+<div class="min-h-screen bg-gray-100 flex items-center justify-center p-5">
 
 
-<div class="bg-white w-full max-w-md rounded-2xl shadow p-8">
+<div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-8">
 
 
-<h1 class="text-2xl font-bold mb-4">
-PayDZ Checkout
+<h1 class="text-2xl font-bold text-center">
+
+{{paymentLink.title}}
+
 </h1>
 
 
-<div class="mb-6">
 
-<h2 class="font-semibold">
-{{checkout.product_name}}
-</h2>
+<p class="text-gray-500 text-center mt-3">
 
+{{paymentLink.description}}
 
-<p class="text-gray-500">
-{{checkout.description}}
 </p>
+
+
+
+<div class="text-center mt-6">
+
+
+<span class="text-4xl font-bold">
+
+{{paymentLink.amount}}
+
+</span>
+
+
+<span class="ml-2">
+
+{{paymentLink.currency}}
+
+</span>
+
 
 </div>
 
 
 
-<div class="border rounded-xl p-4 mb-6">
 
-<p>
-Payment ID:
-</p>
+<div class="flex justify-center mt-8">
 
-<strong>
-{{checkout.payment_id}}
-</strong>
+
+<img
+:src="'data:image/png;base64,'+qrCode"
+class="w-48 h-48"
+/>
+
 
 </div>
+
 
 
 
 <button
-class="w-full bg-black text-white py-3 rounded-xl">
 
-Continue Payment
+@click="pay"
+
+:disabled="loading"
+
+class="mt-8 w-full bg-black text-white py-4 rounded-xl text-lg"
+
+>
+
+
+<span v-if="!loading">
+
+Pay Now
+
+</span>
+
+
+<span v-else>
+
+Processing...
+
+</span>
+
 
 </button>
 
 
+
+
+<div class="text-center mt-5 text-sm text-gray-400">
+
+Secured by PayDZ
+
+</div>
+
+
+
 </div>
 
 
 </div>
+
+
 
 </template>

@@ -6,48 +6,114 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
 
             $table->id();
 
+            /*
+            |--------------------------------------------------------------------------
+            | Merchant
+            |--------------------------------------------------------------------------
+            */
             $table->foreignId('merchant_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            $table->string('payment_id')->unique();
 
-            $table->decimal('amount',12,2);
+            /*
+            |--------------------------------------------------------------------------
+            | Payment Link
+            | بدون foreign key حاليا لأن payment_links ينشأ لاحقا
+            |--------------------------------------------------------------------------
+            */
+            $table->unsignedBigInteger('payment_link_id')
+                ->nullable();
 
-            $table->string('currency')->default('DZD');
 
-            $table->string('customer_email');
+            /*
+            |--------------------------------------------------------------------------
+            | Customer
+            |--------------------------------------------------------------------------
+            */
+            $table->string('customer_name')
+                ->nullable();
 
-            $table->string('customer_name')->nullable();
+            $table->string('customer_email')
+                ->nullable();
 
-            $table->string('description')->nullable();
 
-            $table->enum('status',[
+            /*
+            |--------------------------------------------------------------------------
+            | Amount
+            |--------------------------------------------------------------------------
+            */
+            $table->decimal('amount', 12, 2);
+
+            $table->string('currency')
+                ->default('DZD');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Payment Method
+            |--------------------------------------------------------------------------
+            */
+            $table->enum('method', [
+
+                'cib',
+                'baridimob',
+                'qr'
+
+            ])->default('baridimob');
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Payment Status
+            |--------------------------------------------------------------------------
+            */
+            $table->enum('status', [
+
                 'pending',
                 'paid',
                 'failed',
-                'cancelled',
-                'expired'
+                'refunded'
+
             ])->default('pending');
 
-            $table->string('provider')->nullable();
 
-            $table->string('provider_reference')->nullable();
+            /*
+            |--------------------------------------------------------------------------
+            | Internal Transaction ID
+            |--------------------------------------------------------------------------
+            */
+            $table->string('transaction_id')
+                ->unique();
 
-            $table->json('metadata')->nullable();
 
-            $table->timestamp('paid_at')->nullable();
+            /*
+            |--------------------------------------------------------------------------
+            | Gateway Data
+            |--------------------------------------------------------------------------
+            */
+            $table->json('metadata')
+                ->nullable();
+
 
             $table->timestamps();
+
         });
     }
 
+
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::dropIfExists('payments');
