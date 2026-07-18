@@ -1,159 +1,196 @@
 <script setup>
-
-import {ref} from 'vue'
+import { ref } from 'vue'
+import { Head } from '@inertiajs/vue3'
 import axios from 'axios'
 
+import CheckoutLayout from '@/Layouts/CheckoutLayout.vue'
+import OrderSummary from '@/Components/Checkout/OrderSummary.vue'
+import PaymentMethodCard from '@/Components/Checkout/PaymentMethodCard.vue'
 
 const props = defineProps({
-
-paymentLink:Object,
-
-qrCode:String
-
+    session: Object
 })
 
+const selectedMethod = ref(props.session.payment?.method ?? null)
 
 const loading = ref(false)
+const success = ref(false)
+const error = ref('')
+const transaction = ref(null)
 
+async function pay() {
 
+    if (!selectedMethod.value) {
+        error.value = 'Please select a payment method.'
+        return
+    }
 
-function pay(){
+    loading.value = true
+    error.value = ''
 
+    try {
 
-loading.value=true
+        const { data } = await axios.post(
+            `/api/v1/checkout/${props.session.session_id}/pay`,
+            {
+                payment_method: selectedMethod.value
+            }
+        )
 
+        success.value = true
+        transaction.value = data.data
 
-axios.post(
-'/pay/'+props.paymentLink.public_id+'/process'
-)
-.then(res=>{
+    } catch (e) {
 
+        error.value =
+            e.response?.data?.message ??
+            'Payment failed.'
 
-alert(
-'Payment started'
-)
+    }
 
-
-})
-.finally(()=>{
-
-loading.value=false
-
-})
-
-
+    loading.value = false
 }
-
-
-
 </script>
-
-
 
 <template>
 
+<CheckoutLayout title="Secure Checkout">
 
-<div class="min-h-screen bg-gray-100 flex items-center justify-center p-5">
+<Head title="Secure Checkout" />
 
+<div class="grid gap-8 lg:grid-cols-2">
 
-<div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-8">
+    <OrderSummary
+        :session="session"
+    />
 
+    <div
+        class="rounded-3xl bg-white p-8 shadow-lg border border-slate-200"
+    >
 
-<h1 class="text-2xl font-bold text-center">
+        <template v-if="!success">
 
-{{paymentLink.title}}
+            <h2 class="text-2xl font-bold mb-6">
 
-</h1>
+                Choose payment method
 
+            </h2>
 
+            <div class="space-y-4">
 
-<p class="text-gray-500 text-center mt-3">
+                <PaymentMethodCard
+                    value="cib"
+                    title="CIB Card"
+                    description="Pay securely using your CIB card."
+                    icon="💳"
+                    :selected="selectedMethod==='cib'"
+                    :disabled="loading"
+                    @select="selectedMethod=$event"
+                />
 
-{{paymentLink.description}}
+                <PaymentMethodCard
+                    value="edahabia"
+                    title="Edahabia"
+                    description="Pay with your Algérie Poste card."
+                    icon="🟡"
+                    :selected="selectedMethod==='edahabia'"
+                    :disabled="loading"
+                    @select="selectedMethod=$event"
+                />
 
-</p>
+                <PaymentMethodCard
+                    value="baridimob"
+                    title="BaridiMob"
+                    description="Instant payment from BaridiMob."
+                    icon="📱"
+                    :selected="selectedMethod==='baridimob'"
+                    :disabled="loading"
+                    @select="selectedMethod=$event"
+                />
 
+            </div>
 
+            <button
 
-<div class="text-center mt-6">
+                @click="pay"
 
+                :disabled="loading"
 
-<span class="text-4xl font-bold">
+                class="mt-8 w-full rounded-2xl bg-blue-600 py-4 text-lg font-bold text-white transition hover:bg-blue-700 disabled:opacity-60"
 
-{{paymentLink.amount}}
+            >
 
-</span>
+                <span v-if="loading">
 
+                    Processing Payment...
 
-<span class="ml-2">
+                </span>
 
-{{paymentLink.currency}}
+                <span v-else>
 
-</span>
+                    Pay Now
 
+                </span>
+
+            </button>
+
+            <p
+                v-if="error"
+                class="mt-5 text-center text-red-600"
+            >
+                {{ error }}
+            </p>
+
+        </template>
+
+        <template v-else>
+
+            <div class="py-10 text-center">
+
+                <div class="text-7xl">
+
+                    ✅
+
+                </div>
+
+                <h2 class="mt-6 text-3xl font-bold text-green-600">
+
+                    Payment Successful
+
+                </h2>
+
+                <p class="mt-3 text-slate-500">
+
+                    Your payment has been processed successfully.
+
+                </p>
+
+                <div
+                    class="mt-8 rounded-2xl bg-slate-100 p-5"
+                >
+
+                    <p class="text-sm text-slate-500">
+
+                        Transaction ID
+
+                    </p>
+
+                    <p
+                        class="mt-2 break-all font-mono"
+                    >
+                        {{ transaction.transaction_id }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </template>
+
+    </div>
 
 </div>
 
-
-
-
-<div class="flex justify-center mt-8">
-
-
-<img
-:src="'data:image/png;base64,'+qrCode"
-class="w-48 h-48"
-/>
-
-
-</div>
-
-
-
-
-<button
-
-@click="pay"
-
-:disabled="loading"
-
-class="mt-8 w-full bg-black text-white py-4 rounded-xl text-lg"
-
->
-
-
-<span v-if="!loading">
-
-Pay Now
-
-</span>
-
-
-<span v-else>
-
-Processing...
-
-</span>
-
-
-</button>
-
-
-
-
-<div class="text-center mt-5 text-sm text-gray-400">
-
-Secured by PayDZ
-
-</div>
-
-
-
-</div>
-
-
-</div>
-
-
+</CheckoutLayout>
 
 </template>

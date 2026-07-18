@@ -2,20 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 
-
-/*
-|--------------------------------------------------------------------------
-| API Controllers
-|--------------------------------------------------------------------------
-*/
-
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\CheckoutController;
-use App\Http\Controllers\Api\ApiKeyController;
-use App\Http\Controllers\Api\WebhookController;
-use App\Http\Controllers\Api\MerchantController;
-use App\Http\Controllers\Api\PaymentLinkController;
-use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\CheckoutSessionController;
+use App\Http\Controllers\Api\SatimCallbackController;
 
 
 
@@ -26,130 +16,24 @@ use App\Http\Controllers\Api\TransactionController;
 */
 
 
-Route::prefix('v1')->group(function () {
+
+/*
+|--------------------------------------------------------------------------
+| Authentication
+|--------------------------------------------------------------------------
+*/
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Payment Links
-    |--------------------------------------------------------------------------
-    */
+Route::post(
+    '/register',
+    [AuthController::class,'register']
+);
 
 
-    Route::get(
-        '/payment-links',
-        [PaymentLinkController::class,'index']
-    );
-
-
-    Route::post(
-        '/payment-links',
-        [PaymentLinkController::class,'store']
-    );
-
-
-    Route::get(
-        '/payment-links/{paymentLink}',
-        [PaymentLinkController::class,'show']
-    );
-
-
-    Route::post(
-        '/payment-links/{paymentLink}/disable',
-        [PaymentLinkController::class,'disable']
-    );
-
-
-    Route::post(
-        '/payment-links/{paymentLink}/enable',
-        [PaymentLinkController::class,'enable']
-    );
-
-
-    Route::get(
-        '/payment-links/{paymentLink}/stats',
-        [PaymentLinkController::class,'stats']
-    );
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Payments
-    |--------------------------------------------------------------------------
-    */
-
-
-    Route::post(
-        '/payments',
-        [PaymentController::class,'store']
-    );
-
-
-    Route::get(
-        '/payments/{id}',
-        [PaymentController::class,'show']
-    );
-
-
-    Route::post(
-        '/payments/{id}/refund',
-        [PaymentController::class,'refund']
-    );
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Checkout
-    |--------------------------------------------------------------------------
-    */
-
-
-    Route::post(
-        '/checkout/{id}/pay',
-        [CheckoutController::class,'pay']
-    );
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Merchant
-    |--------------------------------------------------------------------------
-    */
-
-
-    Route::get(
-        '/merchant/payments',
-        [MerchantController::class,'payments']
-    );
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Transactions
-    |--------------------------------------------------------------------------
-    */
-
-
-    Route::get(
-        '/transactions/{id}',
-        [TransactionController::class,'show']
-    );
-
-
-
-});
+Route::post(
+    '/login',
+    [AuthController::class,'login']
+);
 
 
 
@@ -157,34 +41,75 @@ Route::prefix('v1')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Payment Webhook
+| Checkout Sessions
 |--------------------------------------------------------------------------
 */
 
 
 Route::post(
-    '/webhook/payment',
+    '/checkout/sessions',
     [
-        WebhookController::class,
+        CheckoutSessionController::class,
+        'store'
+    ]
+);
+
+
+
+Route::get(
+    '/checkout/sessions/{sessionId}',
+    [
+        CheckoutSessionController::class,
+        'show'
+    ]
+);
+
+
+
+Route::post(
+    '/checkout/sessions/{sessionId}/complete',
+    [
+        CheckoutSessionController::class,
+        'complete'
+    ]
+);
+
+
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Payments
+|--------------------------------------------------------------------------
+*/
+
+
+Route::post(
+    '/payments/{payment}/pay',
+    [
+        PaymentController::class,
+        'pay'
+    ]
+);
+
+
+
+Route::get(
+    '/payments/{payment}/verify',
+    [
+        PaymentController::class,
+        'verify'
+    ]
+);
+
+
+Route::post(
+    '/satim/callback',
+    [
+        SatimCallbackController::class,
         'handle'
     ]
 );
 
-Route::post(
-    '/webhook/test',
-    [WebhookController::class,'receive']
-);
-Route::post(
-    '/webhook/test',
-    [
-        WebhookController::class,
-        'receive'
-    ]
-);
-Route::post(
-    '/webhook/receive',
-    [
-        WebhookController::class,
-        'receive'
-    ]
-);

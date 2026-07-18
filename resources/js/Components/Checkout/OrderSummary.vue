@@ -2,9 +2,10 @@
 
 defineProps({
 
-amount:{
-default:10000
-}
+    session: {
+        type: Object,
+        required: true
+    }
 
 })
 
@@ -12,79 +13,136 @@ default:10000
 
 <template>
 
-<div
-class="
-rounded-3xl
-bg-white/5
-border
-border-white/10
-p-6">
+<div class="rounded-3xl bg-white p-8 shadow-lg border border-slate-200">
 
-<h2
-class="font-bold
-text-xl
-mb-6">
+    <div class="flex items-center justify-between">
 
-Order Summary
+        <div>
 
-</h2>
+            <p class="text-sm text-slate-500">
+                Merchant
+            </p>
 
-<div class="flex justify-between">
+            <h2 class="mt-1 text-2xl font-bold text-slate-900">
+                {{ session.merchant.business_name }}
+            </h2>
 
-<span>
+        </div>
 
-Subtotal
+        <span
+            class="rounded-full bg-green-100 px-4 py-2 text-sm font-semibold text-green-700"
+        >
+            ✔ Verified
+        </span>
 
-</span>
+    </div>
 
-<span>
+    <div class="my-8 border-t"></div>
 
-{{ amount }} DZD
+    <div class="space-y-5">
 
-</span>
+        <div class="flex justify-between">
 
-</div>
+            <span class="text-slate-500">
+                Customer
+            </span>
 
-<div
-class="flex
-justify-between
-mt-4">
+            <span class="font-semibold">
+                {{ session.customer_name }}
+            </span>
 
-<span>
+        </div>
 
-Fees
+        <div class="flex justify-between">
 
-</span>
+            <span class="text-slate-500">
+                Email
+            </span>
 
-<span>
+            <span class="font-semibold">
+                {{ session.customer_email }}
+            </span>
 
-0 DZD
+        </div>
 
-</span>
+        <div class="flex justify-between">
 
-</div>
+            <span class="text-slate-500">
+                Session
+            </span>
 
-<hr class="my-6 border-white/10">
+            <span
+                class="font-mono text-xs"
+            >
+                {{ session.session_id }}
+            </span>
 
-<div
-class="flex
-justify-between
-font-bold
-text-xl">
+        </div>
 
-<span>
+        <div class="flex justify-between">
 
-Total
+            <span class="text-slate-500">
+                Status
+            </span>
 
-</span>
+            <span
+                class="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold uppercase text-yellow-700"
+            >
+                {{ session.status }}
+            </span>
 
-<span>
+        </div>
 
-{{ amount }} DZD
+    </div>
 
-</span>
+    <div class="my-8 border-t"></div>
 
-</div>
+    <div class="flex items-center justify-between">
+
+        <span class="text-lg font-semibold">
+            Total
+        </span>
+
+        <span
+            class="text-4xl font-extrabold text-blue-600"
+        >
+            {{ session.amount }}
+            {{ session.currency }}
+        </span>
+
+    </div>
+
+    <div
+        class="mt-8 rounded-2xl bg-slate-100 p-4"
+    >
+
+        <div class="flex items-center gap-3">
+
+            <div class="text-2xl">
+
+                🔒
+
+            </div>
+
+            <div>
+
+                <p class="font-semibold">
+
+                    Secure Payment
+
+                </p>
+
+                <p class="text-sm text-slate-500">
+
+                    Your payment is encrypted using industry standards.
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </div>
 

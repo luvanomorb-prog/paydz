@@ -3,84 +3,211 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\PaymentIntent;
+use App\Models\CheckoutSession;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CheckoutController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Legacy Checkout Endpoint
+    |--------------------------------------------------------------------------
+    */
+
     public function create(Request $request)
     {
         $request->validate([
             'merchant_id' => 'required|exists:merchants,id',
-            'amount' => 'required|numeric',
-            'currency' => 'required|string',
-            'description' => 'nullable|string',
-            'customer_email' => 'nullable|email',
-            'customer_name' => 'nullable|string',
+            'amount'      => 'required|numeric|min:1',
+            'currency'    => 'required|string|max:3',
         ]);
 
+        return response()->json([
+            'message' => 'Old checkout endpoint',
+        ]);
+    }
 
-        return DB::transaction(function () use ($request) {
+    /*
+    |--------------------------------------------------------------------------
+    | Complete Checkout Payment
+    |--------------------------------------------------------------------------
+    */
 
-            $intentId = 'pi_PDZ_' . strtoupper(Str::random(18));
+    public function pay(Request $request, string $sessionId)
+    {
+        $request->validate([
+'payment_method' => [
+    'required',
+    'exists:payment_methods,code'
+],
+        ]);
 
-            $clientSecret = 'cs_PDZ_' . Str::random(32);
+        return DB::transaction(function () use ($request, $sessionId) {
 
+            $session = CheckoutSession::with([
+                'payment',
+                'merchant',
+            ])
+            ->where('session_id', $sessionId)
+            ->lockForUpdate()
+            ->firstOrFail();
 
-            $paymentIntent = PaymentIntent::create([
+            /*
+            |--------------------------------------------------------------------------
+            | Already Paid
+            |--------------------------------------------------------------------------
+            */
 
-                'merchant_id' => $request->merchant_id,
+            if ($session->status === 'completed') {
 
-                'intent_id' => $intentId,
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment already completed',
+                    'data'    => $session,
+                ]);
+            }
 
-                'client_secret' => $clientSecret,
+            $payment = $session->payment;
 
-                'amount' => $request->amount,
+            /*
+            |--------------------------------------------------------------------------
+            | Payment Gateway
+            |--------------------------------------------------------------------------
+            */
 
-                'currency' => $request->currency,
+            $gateway = match ($request->payment_method) {
 
-                'status' => 'requires_payment',
-
-                'payment_method' => 'mock',
-
-                'gateway' => 'mock',
-
-                'description' => $request->description,
-
-                'metadata' => [
-                    'customer_email' => $request->customer_email,
-                    'customer_name' => $request->customer_name,
+                'cib' => [
+                    'provider' => 'SATIM',
+                    'reference' => 'SATIM_' . strtoupper(Str::random(18)),
                 ],
+
+                'edahabia' => [
+                    'provider' => 'SATIM',
+                    'reference' => 'SATIM_' . strtoupper(Str::random(18)),
+                ],
+
+                'baridimob' => [
+                    'provider' => 'BARIDIMOB',
+                    'reference' => 'BMD_' . strtoupper(Str::random(18)),
+                ],
+
+                default => [
+                    'provider' => 'MOCK',
+                    'reference' => 'MOCK_' . strtoupper(Str::random(18)),
+                ],
+            };
+
+            /*
+            |--------------------------------------------------------------------------
+            | Update Payment
+            |--------------------------------------------------------------------------
+            */
+
+            $payment->update([
+
+                'method' => $request->payment_method,
+
+                'provider' => $gateway['provider'],
+
+                'provider_reference' => $gateway['reference'],
+
+                'transaction_id' => 'TXN_PDZ_' . strtoupper(Str::random(16)),
+
+                'status' => 'paid',
 
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Update Checkout Session
+            |--------------------------------------------------------------------------
+            */
+
+            $session->update([
+
+                'status' => 'completed',
+
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Transaction
+            |--------------------------------------------------------------------------
+            */
+
+            $transaction = Transaction::create([
+
+                'merchant_id' => $payment->merchant_id,
+
+                'payment_id' => $payment->id,
+
+                'transaction_id' => $payment->transaction_id,
+
+                'provider' => $payment->provider,
+
+                'provider_reference' => $payment->provider_reference,
+
+                'gateway' => $payment->provider,
+
+                'gateway_reference' => $payment->provider_reference,
+
+                'amount' => $payment->amount,
+
+                'currency' => $payment->currency,
+
+                'status' => 'paid',
+
+                'paid_at' => now(),
+
+                'raw_response' => json_encode([
+                    'status' => 'APPROVED',
+                    'code' => '00',
+                    'message' => 'Payment Approved',
+                ]),
+
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Response
+            |--------------------------------------------------------------------------
+            */
 
             return response()->json([
 
                 'success' => true,
 
-                'message' => 'Checkout session created',
+                'message' => 'Payment completed successfully',
 
-                'payment_intent' => [
+                'data' => [
 
-                    'id' => $paymentIntent->id,
+                    'session_id' => $session->session_id,
 
-                    'intent_id' => $paymentIntent->intent_id,
+                    'merchant_id' => $payment->merchant_id,
 
-                    'client_secret' => $paymentIntent->client_secret,
+                    'payment_id' => $payment->id,
 
-                    'amount' => $paymentIntent->amount,
+                    'payment_method' => $payment->method,
 
-                    'currency' => $paymentIntent->currency,
+                    'provider' => $payment->provider,
 
-                    'status' => $paymentIntent->status,
+                    'provider_reference' => $payment->provider_reference,
 
-                ]
+                    'transaction_id' => $transaction->transaction_id,
 
-            ],201);
+                    'status' => $payment->status,
 
+                    'amount' => $payment->amount,
+
+                    'currency' => $payment->currency,
+
+                ],
+
+            ]);
         });
     }
 }

@@ -4,9 +4,8 @@ namespace App\Services;
 
 use App\Models\Payment;
 use App\Models\Transaction;
-use App\Models\Merchant;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 
 class TransactionService
@@ -14,15 +13,15 @@ class TransactionService
 
 
     /**
-     * إنشاء Transaction جديدة
+     * Create transaction from payment
      */
-    public function create(Payment $payment)
+    public function create(Payment $payment): Transaction
     {
 
         return DB::transaction(function () use ($payment) {
 
 
-            $transaction = Transaction::create([
+            return Transaction::create([
 
                 'merchant_id' => $payment->merchant_id,
 
@@ -37,12 +36,10 @@ class TransactionService
                 'status' => 'pending',
 
                 'reference' =>
-                    'TXN_' . strtoupper(Str::random(20))
+                    'TXN_' .
+                    strtoupper(Str::random(20))
 
             ]);
-
-
-            return $transaction;
 
 
         });
@@ -53,7 +50,7 @@ class TransactionService
 
 
     /**
-     * تأكيد الدفع
+     * Mark transaction as paid
      */
     public function complete(Transaction $transaction)
     {
@@ -63,7 +60,9 @@ class TransactionService
 
             $transaction->update([
 
-                'status'=>'completed'
+                'status'=>'paid',
+
+                'paid_at'=>now()
 
             ]);
 
@@ -72,31 +71,19 @@ class TransactionService
             $payment = $transaction->payment;
 
 
+
             $payment->update([
 
-                'status'=>'paid'
+                'status'=>'paid',
+
+                'provider_reference'=>
+                    $transaction->gateway_reference
 
             ]);
 
 
 
-            $merchant = $transaction->merchant;
-
-
-
-            $merchant->increment(
-                'payments_count'
-            );
-
-
-            $merchant->increment(
-                'revenue',
-                $transaction->amount
-            );
-
-
-
-            return $transaction;
+            return $transaction->fresh();
 
 
         });
@@ -108,29 +95,43 @@ class TransactionService
 
 
     /**
-     * فشل الدفع
+     * Mark transaction failed
      */
-    public function fail(Transaction $transaction)
+    public function fail(
+        Transaction $transaction,
+        ?string $reason=null
+    )
     {
 
 
-        $transaction->update([
-
-            'status'=>'failed'
-
-        ]);
-
+        return DB::transaction(function () use (
+            $transaction,
+            $reason
+        ) {
 
 
-        $transaction->payment->update([
+            $transaction->update([
 
-            'status'=>'failed'
+                'status'=>'failed',
 
-        ]);
+                'failure_reason'=>$reason
+
+            ]);
 
 
 
-        return $transaction;
+            $transaction->payment->update([
+
+                'status'=>'failed'
+
+            ]);
+
+
+
+            return $transaction->fresh();
+
+
+        });
 
 
     }
@@ -138,4 +139,3 @@ class TransactionService
 
 
 }
-

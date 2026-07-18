@@ -1,0 +1,70 @@
+[90m= [39m[
+    {#7538
+      +"[1mcolumn_name[22m": [32m"[39m[32mid[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mbigint[39m[32m"[39m,
+    },
+    {#7536
+      +"[1mcolumn_name[22m": [32m"[39m[32mmerchant_id[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mbigint[39m[32m"[39m,
+    },
+    {#7535
+      +"[1mcolumn_name[22m": [32m"[39m[32mpayment_link_id[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mbigint[39m[32m"[39m,
+    },
+    {#7540
+      +"[1mcolumn_name[22m": [32m"[39m[32mcustomer_name[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7499
+      +"[1mcolumn_name[22m": [32m"[39m[32mcustomer_email[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7541
+      +"[1mcolumn_name[22m": [32m"[39m[32mamount[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mnumeric[39m[32m"[39m,
+    },
+    {#7542
+      +"[1mcolumn_name[22m": [32m"[39m[32mcurrency[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7543
+      +"[1mcolumn_name[22m": [32m"[39m[32mmethod[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7544
+      +"[1mcolumn_name[22m": [32m"[39m[32mstatus[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7545
+      +"[1mcolumn_name[22m": [32m"[39m[32mtransaction_id[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7546
+      +"[1mcolumn_name[22m": [32m"[39m[32mmetadata[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mjson[39m[32m"[39m,
+    },
+    {#7547
+      +"[1mcolumn_name[22m": [32m"[39m[32mcreated_at[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mtimestamp without time zone[39m[32m"[39m,
+    },
+    {#7548
+      +"[1mcolumn_name[22m": [32m"[39m[32mupdated_at[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mtimestamp without time zone[39m[32m"[39m,
+    },
+    {#7549
+      +"[1mcolumn_name[22m": [32m"[39m[32mpayment_id[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7550
+      +"[1mcolumn_name[22m": [32m"[39m[32mdescription[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mtext[39m[32m"[39m,
+    },
+    {#7551
+      +"[1mcolumn_name[22m": [32m"[39m[32mprovider[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+    {#7552
+      +"[1mcolumn_name[22m": [32m"[39m[32mprovider_reference[39m[32m"[39m,
+      +"[1mdata_type[22m": [32m"[39m[32mcharacter varying[39m[32m"[39m,
+    },
+  ]

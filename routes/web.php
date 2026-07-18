@@ -1,222 +1,349 @@
 <?php
 
+
 use Illuminate\Support\Facades\Route;
 
+
+/*
+|--------------------------------------------------------------------------
+| Controllers
+|--------------------------------------------------------------------------
+*/
+
+
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PaymentLinkController;
-use App\Http\Controllers\PaymentLinkDashboardController;
-use App\Http\Controllers\ApiKeyController;
+use App\Http\Controllers\DashboardExportController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CheckoutPageController;
+
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\MerchantController;
+use App\Http\Controllers\Admin\KycController as AdminKycController;
 
 
-Route::get(
-'/checkout/{public_id}',
-[
-CheckoutController::class,
-'show'
-]
-)
-->name('checkout');
-
-
-
-Route::post(
-'/checkout/{public_id}/pay',
-[
-CheckoutController::class,
-'pay'
-]
-);
+use App\Http\Controllers\Merchant\KycController as MerchantKycController;
 
 
 
-Route::get(
-'/payment/{id}/qr',
-[
-CheckoutController::class,
-'qr'
-]
-);
-
-Route::middleware('auth')->group(function(){
 
 
-Route::get(
-'/settings/api-keys',
-[
-ApiKeyController::class,
-'index'
-]
-)
-->name('api.keys');
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
 
-Route::post(
-'/settings/api-keys/regenerate',
-[
-ApiKeyController::class,
-'regenerate'
-]
-)
-->name('api.keys.regenerate');
+Route::get('/', function () {
 
+    return redirect()->route('dashboard');
 
 });
 
-/*
-|--------------------------------------------------------------------------
-| Public Payment Checkout
-|--------------------------------------------------------------------------
-*/
-
-// صفحة الدفع العامة مثل Stripe
-Route::get('/pay/{paymentLink}', 
-    [PaymentLinkController::class, 'show']
-)->name('payment-links.show');
 
 
-// تنفيذ الدفع
-Route::post('/pay/{paymentLink}/process',
-    [PaymentController::class, 'process']
-)->name('payment.process');
 
-
-// نجاح الدفع
-Route::get('/payment/success/{payment}',
-    [PaymentController::class, 'success']
-)->name('payment.success');
-
-
-// إلغاء الدفع
-Route::get('/payment/cancel/{payment}',
-    [PaymentController::class, 'cancel']
-)->name('payment.cancel');
 
 
 
 /*
 |--------------------------------------------------------------------------
-| Authenticated Merchant Dashboard
+| Authenticated Routes
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->group(function () {
+
+Route::middleware([
+    'auth',
+    'verified'
+])
+->group(function () {
+
+
+
 
 
     /*
     |--------------------------------------------------------------------------
-    | Dashboard
+    | Merchant Dashboard
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/dashboard',
+
+    Route::get(
+        '/dashboard',
         [DashboardController::class,'index']
-    )->name('dashboard');
+    )
+    ->name('dashboard');
+
+
+
+
 
 
 
     /*
     |--------------------------------------------------------------------------
-    | Payment Links Management
+    | Dashboard Export
     |--------------------------------------------------------------------------
     */
 
 
-    Route::prefix('dashboard/payment-links')
-        ->name('dashboard.payment-links.')
+    Route::prefix('dashboard/export')
+    ->name('dashboard.export.')
+    ->group(function(){
+
+
+
+        Route::get(
+            '/payments',
+            [DashboardExportController::class,'paymentsCsv']
+        )
+        ->name('payments');
+
+
+
+        Route::get(
+            '/transactions',
+            [DashboardExportController::class,'transactionsCsv']
+        )
+        ->name('transactions');
+
+
+
+        Route::get(
+            '/pdf',
+            [DashboardExportController::class,'pdf']
+        )
+        ->name('pdf');
+
+
+    });
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Merchant KYC
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::prefix('merchant')
+    ->name('merchant.')
+    ->group(function(){
+
+
+
+        Route::get(
+            '/kyc',
+            [MerchantKycController::class,'index']
+        )
+        ->name('kyc');
+
+
+
+        Route::post(
+            '/kyc',
+            [MerchantKycController::class,'store']
+        )
+        ->name('kyc.store');
+
+
+
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Panel
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::middleware('admin')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function(){
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Admin Dashboard
+        |--------------------------------------------------------------------------
+        */
+
+
+        Route::get(
+            '/',
+            [AdminDashboardController::class,'index']
+        )
+        ->name('dashboard');
+
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Merchants Management
+        |--------------------------------------------------------------------------
+        */
+
+
+        Route::prefix('merchants')
+        ->name('merchants.')
         ->group(function(){
 
 
-            // قائمة الروابط
-            Route::get('/',
-                [PaymentLinkDashboardController::class,'index']
-            )->name('index');
+
+            Route::get(
+                '/',
+                [MerchantController::class,'index']
+            )
+            ->name('index');
 
 
-            // إنشاء رابط
-            Route::get('/create',
-                [PaymentLinkDashboardController::class,'create']
-            )->name('create');
+
+            Route::post(
+                '/{merchant}/verify',
+                [MerchantController::class,'verify']
+            )
+            ->name('verify');
 
 
-            Route::post('/',
-                [PaymentLinkDashboardController::class,'store']
-            )->name('store');
+
+            Route::post(
+                '/{merchant}/reject',
+                [MerchantController::class,'reject']
+            )
+            ->name('reject');
 
 
-            // عرض رابط
-            Route::get('/{paymentLink}',
-                [PaymentLinkDashboardController::class,'show']
-            )->name('show');
 
+            Route::post(
+                '/{merchant}/suspend',
+                [MerchantController::class,'suspend']
+            )
+            ->name('suspend');
 
-            // تعديل
-            Route::get('/{paymentLink}/edit',
-                [PaymentLinkDashboardController::class,'edit']
-            )->name('edit');
-
-
-            Route::put('/{paymentLink}',
-                [PaymentLinkDashboardController::class,'update']
-            )->name('update');
-
-
-            // تعطيل الرابط
-            Route::post('/{paymentLink}/disable',
-                [PaymentLinkDashboardController::class,'disable']
-            )->name('disable');
-
-
-            // تفعيل الرابط
-            Route::post('/{paymentLink}/enable',
-                [PaymentLinkDashboardController::class,'enable']
-            )->name('enable');
-
-
-            // إحصائيات الرابط
-            Route::get('/{paymentLink}/stats',
-                [PaymentLinkDashboardController::class,'stats']
-            )->name('stats');
 
         });
 
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | Transactions
-    |--------------------------------------------------------------------------
-    */
-
-    Route::get('/payments',
-        [PaymentController::class,'index']
-    )->name('payments.index');
 
 
-    Route::get('/payments/{payment}',
-        [PaymentController::class,'show']
-    )->name('payments.show');
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | KYC Management
+        |--------------------------------------------------------------------------
+        */
+
+
+        Route::prefix('kyc')
+        ->name('kyc.')
+        ->group(function(){
+
+
+
+            Route::get(
+                '/',
+                [AdminKycController::class,'index']
+            )
+            ->name('index');
+
+
+
+
+
+            Route::get(
+                '/{document}/view',
+                [AdminKycController::class,'view']
+            )
+            ->name('view');
+
+
+
+
+
+            Route::post(
+                '/{document}/approve',
+                [AdminKycController::class,'approve']
+            )
+            ->name('approve');
+
+
+
+
+
+            Route::post(
+                '/{document}/reject',
+                [AdminKycController::class,'reject']
+            )
+            ->name('reject');
+
+
+
+        });
+
+
+
+
+
+
+    });
+
+
 
 
 
 });
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Public Checkout
+|--------------------------------------------------------------------------
+*/
+
+Route::get(
+    '/checkout/{session}',
+    [CheckoutController::class,'show']
+)
+->name('checkout.show');
+
+
 
 
 
 require __DIR__.'/auth.php';
-use App\Http\Controllers\TransactionController;
-
-
-Route::middleware('auth')->group(function(){
-
-    Route::get('/transactions',
-        [TransactionController::class,'index']
-    )->name('transactions.index');
-
-
-    Route::get('/transactions/{transaction}',
-        [TransactionController::class,'show']
-    )->name('transactions.show');
-
-});

@@ -2,14 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Models\CheckoutSession;
 
 class CheckoutPageController extends Controller
 {
-    public function show($intent_id)
+
+    public function show($sessionId)
     {
-        return Inertia::render('Checkout/Checkout',[
-            'intent'=>$intent_id
+
+        $session = CheckoutSession::with([
+            'merchant',
+            'payment'
+        ])
+        ->where('session_id',$sessionId)
+        ->firstOrFail();
+
+
+        return view('checkout.show',[
+            'session'=>$session
         ]);
+
     }
+
+
 }

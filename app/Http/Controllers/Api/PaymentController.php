@@ -3,73 +3,57 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\PaymentService;
+use App\Models\Payment;
+use App\Services\GatewayManager;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+
+
 
 class PaymentController extends Controller
 {
 
-    protected PaymentService $paymentService;
+
+    public function __construct(
+        protected GatewayManager $gatewayManager
+    ){}
 
 
-    public function __construct(PaymentService $paymentService)
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Start Payment
+    |--------------------------------------------------------------------------
+    |
+    | عندما يضغط المشتري على زر الدفع
+    |
+    */
+
+    public function pay(
+        Request $request,
+        Payment $payment
+    )
     {
-        $this->paymentService = $paymentService;
-    }
 
 
-
-    /**
-     * Create Payment
-     */
-    public function store(Request $request)
-    {
-
-        $validator = Validator::make($request->all(), [
-
-            'merchant_id' => [
-                'required',
-                'exists:merchants,id'
-            ],
-
-            'amount' => [
-                'required',
-                'numeric',
-                'min:1'
-            ],
-
-            'currency' => [
-                'nullable',
-                'string'
-            ],
-
-            'customer_email' => [
-                'required',
-                'email'
-            ],
-
-            'customer_name' => [
-                'nullable',
-                'string'
-            ],
-
-            'description' => [
-                'nullable',
-                'string'
-            ],
-
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Check status
+        |--------------------------------------------------------------------------
+        */
 
 
-
-        if ($validator->fails()) {
+        if(
+            $payment->status !== 'pending'
+        )
+        {
 
             return response()->json([
 
-                'message' => 'Validation error',
+                'message'=>'Payment already processed',
 
-                'errors' => $validator->errors()
+                'status'=>$payment->status
 
             ],422);
 
@@ -77,130 +61,299 @@ class PaymentController extends Controller
 
 
 
-        $payment = $this->paymentService
-            ->createPayment($request->all());
+
+        /*
+        |--------------------------------------------------------------------------
+        | Get Gateway
+        |--------------------------------------------------------------------------
+        */
 
 
-
-        return response()->json([
-
-            'data' => [
-
-                'id' => $payment->id,
-
-
-                'payment_intent_id' =>
-                    $payment->payment_id,
-
-
-                'amount' =>
-                    $payment->amount,
-
-
-                'currency' =>
-                    $payment->currency,
-
-
-                'status' =>
-                    $payment->status,
-
-
-                'description' =>
-                    $payment->description,
-
-
-                'transaction' => [
-
-                    'id' =>
-                        $payment->transaction?->id,
-
-
-                    'reference' =>
-                        $payment->transaction?->transaction_id,
-
-
-                ],
-
-
-                'created_at' =>
-                    $payment->created_at,
-
-            ]
-
-        ],201);
-
-    }
-
-
-
-
-    /**
-     * Show Payment
-     */
-    public function show($paymentId)
-    {
-
-        $payment = $this->paymentService
-            ->getPayment($paymentId);
-
-
-
-        return response()->json([
-
-            'data' => $payment
-
-        ]);
-
-    }
-
-
-
-
-    /**
-     * Update Status
-     */
-    public function updateStatus(Request $request,$paymentId)
-    {
-
-        $validator = Validator::make($request->all(), [
-
-            'status' => [
-                'required',
-                'string'
-            ]
-
-        ]);
-
-
-
-        if($validator->fails()){
-
-            return response()->json([
-
-                'errors'=>$validator->errors()
-
-            ],422);
-
-        }
-
-
-
-        $payment = $this->paymentService
-            ->updateStatus(
-                $paymentId,
-                $request->status
+        $gateway = $this->gatewayManager
+            ->driver(
+                $payment->method
             );
 
 
 
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Payment Request
+        |--------------------------------------------------------------------------
+        */
+
+
+        $result = $gateway->charge(
+            $payment
+        );
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Payment Failed
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            !$result['success']
+        )
+        {
+
+
+            $payment->update([
+
+
+                'status'=>'failed',
+
+
+                'provider'=>
+                    $gateway->getName(),
+
+
+
+                'metadata'=>[
+
+                    'error'=>
+                        $result['error_message'] ?? null
+
+                ]
+
+
+            ]);
+
+
+
+
+            return response()->json([
+
+
+                'message'=>'Payment failed',
+
+
+                'data'=>$result
+
+
+
+            ],422);
+
+
+        }
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Redirect payment page
+        |--------------------------------------------------------------------------
+        |
+        | مثال:
+        | Edahabia -> SATIM
+        |
+        */
+
+
+        if(
+            !empty($result['redirect_url'])
+        )
+        {
+
+
+            $payment->update([
+
+
+                'status'=>'requires_action',
+
+
+
+                'provider'=>
+                    $gateway->getName(),
+
+
+
+                'provider_reference'=>
+                    $result['gateway_reference'] ?? null,
+
+
+
+                'metadata'=>
+                    $result['raw_response'] ?? null
+
+
+            ]);
+
+
+
+
+
+            return response()->json([
+
+
+                'status'=>'requires_action',
+
+
+
+                'redirect_url'=>
+                    $result['redirect_url'],
+
+
+
+                'reference'=>
+                    $result['gateway_reference'] ?? null
+
+
+
+            ]);
+
+        }
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Instant payment
+        |--------------------------------------------------------------------------
+        |
+        | BaridiMob / Mock
+        |
+        */
+
+
+        DB::transaction(function() use(
+            $payment,
+            $gateway,
+            $result
+        ){
+
+            $payment->update([
+
+
+                'status'=>'paid',
+
+
+
+                'provider'=>
+                    $gateway->getName(),
+
+
+
+                'provider_reference'=>
+                    $result['gateway_reference'] ?? null
+
+
+
+            ]);
+
+
+
+        });
+
+
+
+
+
+
         return response()->json([
 
-            'data'=>$payment
+
+            'status'=>'paid',
+
+
+            'message'=>'Payment completed successfully',
+
+
+
+            'payment'=>$payment->fresh()
+
+
 
         ]);
 
     }
 
 
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Verify Payment
+    |--------------------------------------------------------------------------
+    */
+
+
+    public function verify(
+        Payment $payment
+    )
+    {
+
+
+        if(
+            !$payment->provider_reference
+        )
+        {
+
+            return response()->json([
+
+                'message'=>'Missing provider reference'
+
+            ],422);
+
+        }
+
+
+
+        $gateway = $this->gatewayManager
+            ->driver(
+                $payment->method
+            );
+
+
+
+
+        $result = $gateway->verify(
+            $payment->provider_reference
+        );
+
+
+
+
+        if(
+            $result['success']
+        )
+        {
+
+            $payment->update([
+
+                'status'=>'paid'
+
+            ]);
+
+        }
+
+
+
+
+        return response()->json([
+
+            'status'=>$payment->status,
+
+            'gateway'=>$result
+
+        ]);
+
+    }
 
 }

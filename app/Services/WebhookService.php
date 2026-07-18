@@ -5,19 +5,23 @@ namespace App\Services;
 use App\Models\Merchant;
 use App\Models\Webhook;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+
 
 class WebhookService
 {
 
+
     /**
-     * Send webhook event to merchant
+     * Send webhook event
      */
     public function send(
         Merchant $merchant,
         string $event,
         array $data
-    )
+    ): bool
     {
+
 
         if(!$merchant->webhook_secret)
         {
@@ -25,18 +29,28 @@ class WebhookService
         }
 
 
+
         $payload = [
-            'id' => 'evt_'.uniqid(),
 
-            'event' => $event,
+            'id'=>'evt_'.Str::uuid(),
 
-            'created' => time(),
+            'event'=>$event,
 
-            'data' => $data
+            'created'=>time(),
+
+            'data'=>$data
+
         ];
 
 
-        $body = json_encode($payload);
+
+
+        $body = json_encode(
+            $payload,
+            JSON_UNESCAPED_SLASHES
+        );
+
+
 
 
         $signature = $this->generateSignature(
@@ -45,7 +59,9 @@ class WebhookService
         );
 
 
-        Webhook::create([
+
+
+        $webhook = Webhook::create([
 
             'merchant_id'=>$merchant->id,
 
@@ -61,6 +77,7 @@ class WebhookService
 
 
 
+
         if(!$merchant->webhook_url)
         {
             return false;
@@ -68,77 +85,111 @@ class WebhookService
 
 
 
+
         try {
 
 
-            $response = Http::withHeaders([
+            $response = Http::timeout(10)
+
+            ->withHeaders([
 
                 'Content-Type'=>'application/json',
 
                 'PayDZ-Signature'=>$signature
 
             ])
+
             ->post(
+
                 $merchant->webhook_url,
+
                 $payload
+
             );
 
 
-            Webhook::latest()
-            ->first()
-            ->update([
 
-                'status'=>$response->successful()
-                    ? 'sent'
-                    : 'failed'
+
+
+            $webhook->update([
+
+                'status'=>
+                    $response->successful()
+                    ?
+                    'sent'
+                    :
+                    'failed'
 
             ]);
+
+
+
 
 
             return $response->successful();
 
 
 
-        } catch(\Exception $e){
+        }
+        catch(\Throwable $e)
+        {
+
+
+            $webhook->update([
+
+                'status'=>'failed'
+
+            ]);
+
 
 
             return false;
 
         }
 
+
+
     }
 
 
 
 
 
+
+
     /**
-     * Generate Stripe style HMAC signature
+     * Generate signature
      */
     public function generateSignature(
         string $payload,
         string $secret
-    )
+    ): string
     {
 
 
         $timestamp=time();
 
 
-        $signedPayload =
-            $timestamp.'.'.$payload;
-
-
 
         $signature = hash_hmac(
+
             'sha256',
-            $signedPayload,
+
+            $timestamp.'.'.$payload,
+
             $secret
+
         );
 
 
+
         return
-        "t=".$timestamp.",v1=".$signature;
+
+        't='.
+        $timestamp.
+        ',v1='.
+        $signature;
+
 
     }
 
@@ -146,14 +197,17 @@ class WebhookService
 
 
 
+
+
+
     /**
-     * Verify webhook signature
+     * Verify incoming webhook
      */
     public function verify(
         string $payload,
         string $signature,
         string $secret
-    )
+    ): bool
     {
 
 
@@ -163,12 +217,22 @@ class WebhookService
         );
 
 
+
+        if(count($parts)!==2)
+        {
+            return false;
+        }
+
+
+
+
         $timestamp =
             str_replace(
                 't=',
                 '',
                 $parts[0]
             );
+
 
 
         $hash =
@@ -180,21 +244,29 @@ class WebhookService
 
 
 
-        $expected =
-            hash_hmac(
-                'sha256',
-                $timestamp.'.'.$payload,
-                $secret
-            );
+
+        $expected = hash_hmac(
+
+            'sha256',
+
+            $timestamp.'.'.$payload,
+
+            $secret
+
+        );
 
 
 
         return hash_equals(
+
             $expected,
+
             $hash
+
         );
 
     }
+
 
 
 }

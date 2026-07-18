@@ -2,86 +2,219 @@
 
 namespace App\Services;
 
-use App\Enums\PaymentStatus;
+
 use App\Models\Payment;
-use InvalidArgumentException;
+
+use Exception;
+
+
+
 
 class PaymentStateMachine
 {
-    /**
-     * Change payment status.
-     */
+
+
+
+    protected array $transitions = [
+
+
+        'created' => [
+
+            'pending'
+
+        ],
+
+
+
+        'pending' => [
+
+            'processing',
+
+            'requires_action',
+
+            'failed',
+
+            'cancelled'
+
+        ],
+
+
+
+
+        'processing' => [
+
+           'requires_action',
+ 
+            'paid',
+
+            'failed'
+
+        ],
+
+
+
+
+        'paid' => [
+
+            'refunded'
+
+        ],
+
+
+'requires_action' => [
+
+    'processing',
+
+    'paid',
+
+    'failed'
+
+],
+
+        'failed' => [],
+
+
+
+        'cancelled' => [],
+
+
+
+        'refunded' => []
+
+
+
+    ];
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Check Transition
+    |--------------------------------------------------------------------------
+    */
+
+
+    public function canTransition(
+        string $from,
+        string $to
+    ): bool
+    {
+
+
+        return in_array(
+
+            $to,
+
+            $this->transitions[$from] ?? []
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Change Payment Status
+    |--------------------------------------------------------------------------
+    */
+
+
     public function transition(
         Payment $payment,
-        PaymentStatus $newStatus
-    ): Payment {
+        string $newStatus
+    ): Payment
+    {
 
-        $currentStatus = PaymentStatus::from($payment->status);
 
-        if (! $currentStatus->canTransitionTo($newStatus)) {
 
-            throw new InvalidArgumentException(
-                sprintf(
-                    'Cannot change payment status from [%s] to [%s].',
-                    $currentStatus->value,
-                    $newStatus->value
-                )
+        $oldStatus = $payment->status;
+
+
+
+
+
+        if(
+            !$this->canTransition(
+                $oldStatus,
+                $newStatus
+            )
+        ){
+
+
+            throw new Exception(
+
+                "Invalid payment transition: {$oldStatus} -> {$newStatus}"
+
             );
 
+
         }
 
-        $payment->status = $newStatus->value;
 
-        if ($newStatus === PaymentStatus::Paid) {
-            $payment->paid_at = now();
-        }
 
-        $payment->save();
 
-        return $payment->refresh();
+
+
+        $payment->update([
+
+
+            'status'=>$newStatus
+
+
+        ]);
+
+
+
+
+
+
+        return $payment;
+
+
     }
 
-    /**
-     * Mark payment as paid.
-     */
-    public function markAsPaid(Payment $payment): Payment
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Available Next Statuses
+    |--------------------------------------------------------------------------
+    */
+
+
+    public function nextStatuses(
+        Payment $payment
+    ): array
     {
-        return $this->transition(
-            $payment,
-            PaymentStatus::Paid
-        );
+
+
+        return $this->transitions[
+            $payment->status
+        ] ?? [];
+
+
     }
 
-    /**
-     * Mark payment as failed.
-     */
-    public function markAsFailed(Payment $payment): Payment
-    {
-        return $this->transition(
-            $payment,
-            PaymentStatus::Failed
-        );
-    }
 
-    /**
-     * Cancel payment.
-     */
-    public function cancel(Payment $payment): Payment
-    {
-        return $this->transition(
-            $payment,
-            PaymentStatus::Cancelled
-        );
-    }
 
-    /**
-     * Expire payment.
-     */
-    public function expire(Payment $payment): Payment
-    {
-        return $this->transition(
-            $payment,
-            PaymentStatus::Expired
-        );
-    }
+
+
 }
