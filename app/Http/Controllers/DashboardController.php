@@ -88,9 +88,9 @@ class DashboardController extends Controller
 
         $revenueChart = Payment::where('merchant_id',$merchant->id)
             ->where('status','paid')
-            ->selectRaw("DATE_FORMAT(created_at,'%Y-%m') as month, SUM(amount) as total")
-            ->groupBy('month')
-            ->orderBy('month')
+->selectRaw("TO_CHAR(created_at, 'YYYY-MM') as month, SUM(amount) as total")
+->groupByRaw("TO_CHAR(created_at, 'YYYY-MM')")
+->orderByRaw("TO_CHAR(created_at, 'YYYY-MM')")
             ->get();
 
 
