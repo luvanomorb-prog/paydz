@@ -26,32 +26,48 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/satim/callback', [SatimCallbackController::class, 'handle']);
 Route::post('/webhooks/incoming/{gateway}', [WebhookController::class, 'handleIncoming']);
 
-// Protected Merchant Routes (Sanctum / API Key)
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
-    Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/auth/user', [AuthController::class, 'me']);
+// Protected Merchant Routes
+Route::middleware(['auth:sanctum', 'throttle:api'])
+    ->name('api.')
+    ->group(function () {
 
-    // Dashboard Statistics
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+        Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
+        Route::get('/auth/user', [AuthController::class, 'me'])->name('auth.user');
 
-    // Payments API
-Route::apiResource('payments', PaymentController::class)
-    ->names('api.payments');
-    Route::post('/payments/{payment}/process', [PaymentController::class, 'process']);
+        // Dashboard
+        Route::get('/dashboard/stats', [DashboardController::class, 'stats'])
+            ->name('dashboard.stats');
 
-    // Payment Links API
-    Route::apiResource('payment-links', PaymentLinkController::class);
+        // Payments
+        Route::apiResource('payments', PaymentController::class);
 
-    // Transactions API
-    Route::get('/transactions', [TransactionController::class, 'index']);
-    Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);
+        Route::post('/payments/{payment}/process', [PaymentController::class, 'process'])
+            ->name('payments.process');
 
-    // API Keys Management
-    Route::get('/api-keys', [ApiKeyController::class, 'index']);
-    Route::post('/api-keys', [ApiKeyController::class, 'store']);
-    Route::delete('/api-keys/{apiKey}', [ApiKeyController::class, 'destroy']);
+        // Payment Links
+        Route::apiResource('payment-links', PaymentLinkController::class);
 
-    // Merchant Profile
-    Route::get('/merchant', [MerchantController::class, 'show']);
-    Route::put('/merchant', [MerchantController::class, 'update']);
-});
+        // Transactions
+        Route::get('/transactions', [TransactionController::class, 'index'])
+            ->name('transactions.index');
+
+        Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])
+            ->name('transactions.show');
+
+        // API Keys
+        Route::get('/api-keys', [ApiKeyController::class, 'index'])
+            ->name('api-keys.index');
+
+        Route::post('/api-keys', [ApiKeyController::class, 'store'])
+            ->name('api-keys.store');
+
+        Route::delete('/api-keys/{apiKey}', [ApiKeyController::class, 'destroy'])
+            ->name('api-keys.destroy');
+
+        // Merchant
+        Route::get('/merchant', [MerchantController::class, 'show'])
+            ->name('merchant.show');
+
+        Route::put('/merchant', [MerchantController::class, 'update'])
+            ->name('merchant.update');
+    });
