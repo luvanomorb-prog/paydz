@@ -11,6 +11,7 @@ class PaymentManagementController extends Controller
 {
     public function index(Request $request)
     {
+\Log::info('PAYMENTS INDEX ENTERED');
         $merchant = Merchant::where('user_id', $request->user()->id)
             ->firstOrFail();
 
