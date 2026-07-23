@@ -39,13 +39,25 @@ Route::middleware(['auth:sanctum', 'throttle:api'])
             ->name('dashboard.stats');
 
         // Payments
-        Route::apiResource('payments', PaymentController::class);
+Route::apiResource('payments', PaymentController::class)->names([
+    'index'   => 'api.payments.index',
+    'store'   => 'api.payments.store',
+    'show'    => 'api.payments.show',
+    'update'  => 'api.payments.update',
+    'destroy' => 'api.payments.destroy',
+]);
 
         Route::post('/payments/{payment}/process', [PaymentController::class, 'process'])
             ->name('payments.process');
 
         // Payment Links
-        Route::apiResource('payment-links', PaymentLinkController::class);
+Route::apiResource('payment-links', PaymentLinkController::class)->names([
+    'index'   => 'api.payment-links.index',
+    'store'   => 'api.payment-links.store',
+    'show'    => 'api.payment-links.show',
+    'update'  => 'api.payment-links.update',
+    'destroy' => 'api.payment-links.destroy',
+]);
 
         // Transactions
         Route::get('/transactions', [TransactionController::class, 'index'])
