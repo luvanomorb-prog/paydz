@@ -1,13 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\MerchantController;
 use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\CheckoutSessionController;
+use App\Http\Controllers\Api\PaymentLinkController;
 use App\Http\Controllers\Api\SatimCallbackController;
-
-
+use App\Http\Controllers\Api\TransactionController;
+use App\Http\Controllers\Api\WebhookController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,101 +18,39 @@ use App\Http\Controllers\Api\SatimCallbackController;
 |--------------------------------------------------------------------------
 */
 
+// Public Authentication
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 
+// Public Gateways & Callbacks
+Route::post('/satim/callback', [SatimCallbackController::class, 'handle']);
+Route::post('/webhooks/incoming/{gateway}', [WebhookController::class, 'handleIncoming']);
 
-/*
-|--------------------------------------------------------------------------
-| Authentication
-|--------------------------------------------------------------------------
-*/
+// Protected Merchant Routes (Sanctum / API Key)
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/user', [AuthController::class, 'me']);
 
+    // Dashboard Statistics
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
-Route::post(
-    '/register',
-    [AuthController::class,'register']
-);
+    // Payments API
+    Route::apiResource('payments', PaymentController::class);
+    Route::post('/payments/{payment}/process', [PaymentController::class, 'process']);
 
+    // Payment Links API
+    Route::apiResource('payment-links', PaymentLinkController::class);
 
-Route::post(
-    '/login',
-    [AuthController::class,'login']
-);
+    // Transactions API
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::get('/transactions/{transaction}', [TransactionController::class, 'show']);
 
+    // API Keys Management
+    Route::get('/api-keys', [ApiKeyController::class, 'index']);
+    Route::post('/api-keys', [ApiKeyController::class, 'store']);
+    Route::delete('/api-keys/{apiKey}', [ApiKeyController::class, 'destroy']);
 
-
-
-
-/*
-|--------------------------------------------------------------------------
-| Checkout Sessions
-|--------------------------------------------------------------------------
-*/
-
-
-Route::post(
-    '/checkout/sessions',
-    [
-        CheckoutSessionController::class,
-        'store'
-    ]
-);
-
-
-
-Route::get(
-    '/checkout/sessions/{sessionId}',
-    [
-        CheckoutSessionController::class,
-        'show'
-    ]
-);
-
-
-
-Route::post(
-    '/checkout/sessions/{sessionId}/complete',
-    [
-        CheckoutSessionController::class,
-        'complete'
-    ]
-);
-
-
-
-
-
-
-/*
-|--------------------------------------------------------------------------
-| Payments
-|--------------------------------------------------------------------------
-*/
-
-
-Route::post(
-    '/payments/{payment}/pay',
-    [
-        PaymentController::class,
-        'pay'
-    ]
-);
-
-
-
-Route::get(
-    '/payments/{payment}/verify',
-    [
-        PaymentController::class,
-        'verify'
-    ]
-);
-
-
-Route::post(
-    '/satim/callback',
-    [
-        SatimCallbackController::class,
-        'handle'
-    ]
-);
-
+    // Merchant Profile
+    Route::get('/merchant', [MerchantController::class, 'show']);
+    Route::put('/merchant', [MerchantController::class, 'update']);
+});

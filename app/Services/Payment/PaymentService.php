@@ -2,47 +2,160 @@
 
 namespace App\Services\Payment;
 
-use App\Models\Merchant;
-use App\Services\Payment\Pipeline\PaymentPipeline;
-use App\Services\Payment\Pipeline\ValidatePayment;
-use App\Services\Payment\Pipeline\CreatePayment;
-use App\Services\Payment\Pipeline\CreateTransaction;
-use App\Services\Payment\Pipeline\ChargeGateway;
-use App\Services\Payment\Pipeline\FinalizePayment;
+use App\Core\Enums\PaymentStatus;
+use App\Core\Exceptions\PaymentException;
+use App\Models\Payment;
+use App\Models\Transaction;
+use App\Services\GatewayManager;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PaymentService
 {
     public function __construct(
-        protected PaymentPipeline $pipeline
-    ) {
-    }
+        protected GatewayManager $gatewayManager
+    ) {}
 
-    public function create(Merchant $merchant, array $data): array
+    /**
+     * Process a payment in an atomic database transaction with pessimistic locking.
+     */
+    public function processPayment(Payment $payment, array $payload): Payment
     {
-        $payload = array_merge($data, [
+        return DB::transaction(function () use ($payment, $payload) {
+            $lockedPayment = Payment::where('id', $payment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            'merchant_id' => $merchant->id,
+            if ($lockedPayment->status === PaymentStatus::COMPLETED) {
+                throw new PaymentException("Payment {$payment->id} is already completed.");
+            }
 
-            'currency' => $data['currency'] ?? 'DZD',
+            try {
+                $gateway = $this->gatewayManager->driver($lockedPayment->gateway);
+                $response = $gateway->charge([
+                    'amount' => $lockedPayment->amount,
+                    'currency' => $lockedPayment->currency,
+                    'payload' => $payload,
+                ]);
 
-        ]);
+                if ($response->isSuccessful()) {
+                    $lockedPayment->update([
+                        'status' => PaymentStatus::COMPLETED,
+                        'transaction_id' => $response->getTransactionId(),
+                        'gateway_response' => $response->getRawResponse(),
+                        'paid_at' => now(),
+                    ]);
 
-        return $this->pipeline
+                    Transaction::create([
+                        'merchant_id' => $lockedPayment->merchant_id,
+                        'payment_id' => $lockedPayment->id,
+                        'type' => 'charge',
+                        'amount' => $lockedPayment->amount,
+                        'status' => 'success',
+                        'reference' => $response->getTransactionId(),
+                    ]);
+                } else {
+                    $lockedPayment->update([
+                        'status' => PaymentStatus::FAILED,
+                        'gateway_response' => $response->getRawResponse(),
+                        'failed_at' => now(),
+                    ]);
+                }
 
-            ->through([
+                return $lockedPayment;
+            } catch (\Throwable $e) {
+                Log::error('Payment Processing Failed', [
+                    'payment_id' => $lockedPayment->id,
+                    'error' => $e->getMessage(),
+                ]);
 
-                ValidatePayment::class,
+                $lockedPayment->update([
+                    'status' => PaymentStatus::FAILED,
+                    'failed_at' => now(),
+                ]);
 
-                CreatePayment::class,
+                throw $e;
+            }
+        });
+    }
+}<?php
 
-                CreateTransaction::class,
+namespace App\Services\Payment;
 
-                ChargeGateway::class,
+use App\Core\Enums\PaymentStatus;
+use App\Core\Exceptions\PaymentException;
+use App\Models\Payment;
+use App\Models\Transaction;
+use App\Services\GatewayManager;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-                FinalizePayment::class,
+class PaymentService
+{
+    public function __construct(
+        protected GatewayManager $gatewayManager
+    ) {}
 
-            ])
+    /**
+     * Process a payment in an atomic database transaction with pessimistic locking.
+     */
+    public function processPayment(Payment $payment, array $payload): Payment
+    {
+        return DB::transaction(function () use ($payment, $payload) {
+            $lockedPayment = Payment::where('id', $payment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            ->process($payload);
+            if ($lockedPayment->status === PaymentStatus::COMPLETED) {
+                throw new PaymentException("Payment {$payment->id} is already completed.");
+            }
+
+            try {
+                $gateway = $this->gatewayManager->driver($lockedPayment->gateway);
+                $response = $gateway->charge([
+                    'amount' => $lockedPayment->amount,
+                    'currency' => $lockedPayment->currency,
+                    'payload' => $payload,
+                ]);
+
+                if ($response->isSuccessful()) {
+                    $lockedPayment->update([
+                        'status' => PaymentStatus::COMPLETED,
+                        'transaction_id' => $response->getTransactionId(),
+                        'gateway_response' => $response->getRawResponse(),
+                        'paid_at' => now(),
+                    ]);
+
+                    Transaction::create([
+                        'merchant_id' => $lockedPayment->merchant_id,
+                        'payment_id' => $lockedPayment->id,
+                        'type' => 'charge',
+                        'amount' => $lockedPayment->amount,
+                        'status' => 'success',
+                        'reference' => $response->getTransactionId(),
+                    ]);
+                } else {
+                    $lockedPayment->update([
+                        'status' => PaymentStatus::FAILED,
+                        'gateway_response' => $response->getRawResponse(),
+                        'failed_at' => now(),
+                    ]);
+                }
+
+                return $lockedPayment;
+            } catch (\Throwable $e) {
+                Log::error('Payment Processing Failed', [
+                    'payment_id' => $lockedPayment->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $lockedPayment->update([
+                    'status' => PaymentStatus::FAILED,
+                    'failed_at' => now(),
+                ]);
+
+                throw $e;
+            }
+        });
     }
 }

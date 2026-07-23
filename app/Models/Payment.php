@@ -2,287 +2,65 @@
 
 namespace App\Models;
 
-
-use Illuminate\Database\Eloquent\Model;
+use App\Core\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-
-
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Payment extends Model
 {
+    use HasFactory, HasUuids;
 
-
-    use HasFactory;
-
-
-
-
-protected $fillable = [
-
-    'merchant_id',
-
-    'payment_link_id',
-
-    'payment_id',
-
-    'customer_name',
-
-    'customer_email',
-
-    'amount',
-
-    'currency',
-
-    'method',
-
-    'status',
-
-    'transaction_id',
-
-    'description',
-
-    'provider',
-
-    'provider_reference',
-
-    'metadata'
-
-];
-
-
-
-
-    protected $casts = [
-
-
-        'amount' => 'decimal:2',
-
-
-        'metadata' => 'array'
-
-
+    protected $fillable = [
+        'merchant_id',
+        'customer_id',
+        'payment_link_id',
+        'payment_intent_id',
+        'transaction_id',
+        'amount',
+        'currency',
+        'status',
+        'gateway',
+        'payment_method',
+        'description',
+        'metadata',
+        'gateway_response',
+        'paid_at',
+        'failed_at',
     ];
 
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Merchant
-    |--------------------------------------------------------------------------
-    */
-
+    protected $casts = [
+        'amount' => 'integer',
+        'metadata' => 'array',
+        'gateway_response' => 'array',
+        'paid_at' => 'datetime',
+        'failed_at' => 'datetime',
+        'status' => PaymentStatus::class,
+    ];
 
     public function merchant(): BelongsTo
     {
-
-        return $this->belongsTo(
-            Merchant::class
-        );
-
+        return $this->belongsTo(Merchant::class);
     }
 
-
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Payment Link
-    |--------------------------------------------------------------------------
-    */
-
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
 
     public function paymentLink(): BelongsTo
     {
-
-        return $this->belongsTo(
-            PaymentLink::class
-        );
-
+        return $this->belongsTo(PaymentLink::class);
     }
 
-
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Transaction
-    |--------------------------------------------------------------------------
-    */
-
-
-    public function transaction(): HasOne
+    public function transactions(): HasMany
     {
-
-        return $this->hasOne(
-            Transaction::class
-        );
-
+        return $this->hasMany(Transaction::class);
     }
-
-
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Status Helpers
-    |--------------------------------------------------------------------------
-    */
-
-
-    public function isPending(): bool
-    {
-
-        return $this->status === 'pending';
-
-    }
-
-
-
-    public function isProcessing(): bool
-    {
-
-        return $this->status === 'processing';
-
-    }
-
-
-
-    public function isPaid(): bool
-    {
-
-        return $this->status === 'paid';
-
-    }
-
-
-
-    public function isFailed(): bool
-    {
-
-        return $this->status === 'failed';
-
-    }
-
-
-
-    public function isRefunded(): bool
-    {
-
-        return $this->status === 'refunded';
-
-    }
-
-
-
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
-
-
-    public function scopePaid($query)
-    {
-
-        return $query->where(
-            'status',
-            'paid'
-        );
-
-    }
-
-
-
-
-
-    public function scopePending($query)
-    {
-
-        return $query->where(
-            'status',
-            'pending'
-        );
-
-    }
-
-
-
-
-
-    public function scopeFailed($query)
-    {
-
-        return $query->where(
-            'status',
-            'failed'
-        );
-
-    }
-
-
-
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Payment Status List
-    |--------------------------------------------------------------------------
-    */
-
-
-    public static function statuses(): array
-    {
-
-        return [
-
-            'created',
-
-            'pending',
-
-            'processing',
-
-            'paid',
-
-            'failed',
-
-            'cancelled',
-
-            'refunded'
-
-
-        ];
-
-    }
-
-
-
-
-
 }
+
+
+
+
