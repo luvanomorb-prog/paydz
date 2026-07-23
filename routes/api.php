@@ -35,7 +35,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 
     // Payments API
-    Route::apiResource('payments', PaymentController::class);
+Route::apiResource('payments', PaymentController::class)
+    ->names('api.payments');
     Route::post('/payments/{payment}/process', [PaymentController::class, 'process']);
 
     // Payment Links API
