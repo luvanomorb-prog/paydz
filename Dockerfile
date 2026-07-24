@@ -1,12 +1,12 @@
 FROM php:8.4-apache
 
-# السماح لـ Composer بالعمل بحساب Root بدون تحذيرات
+# السماح لـ Composer بالعمل كـ Root دون إيقاف العملية
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# 1. تفعيل موديل mod_rewrite الخاص بالـ Routing في Apache
+# 1. تفعيل موديل Apache Rewrite
 RUN a2enmod rewrite
 
-# 2. تثبيت الحزم وإضافات PHP الخاصة بـ Postgres والملفات
+# 2. تثبيت الحزم وإضافات PHP المطلوبة
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -28,23 +28,23 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# 4. نسخ ملفات المشروع
+# 4. نسخ الملفات
 COPY . .
 
-# 5. توجيه Apache لمجلد public بدلاً من جذر المشروع
+# 5. ضبط مسار DocumentRoot ليكون public/
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# 6. ربط منفذ Apache بمنفذ Railway
+# 6. ضبط المنفذ الديناميكي لـ Railway
 RUN sed -i 's/80/${PORT}/g' /etc/apache2/ports.conf /etc/apache2/sites-available/000-default.conf
 
-# 7. تثبيت الحزم وبناء ملفات Vite
+# 7. تثبيت الحزم وبناء الواجهة
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 RUN npm install
 RUN npm run build
 
-# 8. ضبط الملكية والصلاحيات
+# 8. تعديل الصلاحيات
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
