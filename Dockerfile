@@ -1,36 +1,39 @@
 FROM php:8.4-cli
 
+# تثبيت الحزم وإضافات PHP
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
+    curl \
     libpq-dev \
     libpng-dev \
     libzip-dev \
-    curl \
     nodejs \
     npm \
-    && docker-php-ext-install \
+ && docker-php-ext-install \
     pdo \
     pdo_pgsql \
     gd \
-    zip
+    zip \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# جلب Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
+# نسخ كافة ملفات المشروع
 COPY . .
 
-RUN composer install \
-    --no-interaction \
-    --prefer-dist \
-    --optimize-autoloader \
-    --no-dev
+# تثبيت حزم PHP و Node
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+RUN npm install
+RUN npm run build
 
-RUN npm install && npm run build
-
-RUN php artisan storage:link || true
+# إعطاء الصلاحيات المباشرة لملفات الـ Storage والـ Cache
+RUN chmod -R 777 storage bootstrap/cache
 
 EXPOSE 8080
 
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+# أمر التشغيل الذي يتكفل بالـ Routing وتوجيه كافة الطلبات إلى public/index.php
+CMD ["sh", "-c", "php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && php -S 0.0.0.0:${PORT:-8080} -t public public/index.php"]
