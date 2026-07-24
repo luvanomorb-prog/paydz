@@ -19,8 +19,8 @@ RUN apt-get update && apt-get install -y \
     zip \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. حل مشكلة MPM وتفعيل mod_rewrite لـ Apache
-RUN a2dismod mpm_event mpm_worker || true \
+# 2. إزالة أي تعارض لـ MPM وتأكيد استخدام mpm_prefork و rewrite
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
  && a2enmod mpm_prefork rewrite
 
 # 3. تثبيت Composer
