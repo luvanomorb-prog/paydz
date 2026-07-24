@@ -36,4 +36,4 @@ RUN chmod -R 777 storage bootstrap/cache
 EXPOSE 8080
 
 # أمر التشغيل الذي يتكفل بالـ Routing وتوجيه كافة الطلبات إلى public/index.php
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php -S 0.0.0.0:${PORT:-8080} -t public/"]
+CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php -S 0.0.0.0:${PORT:-8080} router.php"]
