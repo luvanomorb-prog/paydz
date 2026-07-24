@@ -1,6 +1,6 @@
-FROM php:8.4-cli
+FROM dunglas/frankenphp:latest-php8.3
 
-# تثبيت الحزم وإضافات PHP
+# تثبيت الحزم وإضافات PHP المطلوبة
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -22,18 +22,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# نسخ كافة ملفات المشروع
+# نسخ الملفات
 COPY . .
 
-# تثبيت حزم PHP و Node
+# تثبيت حزم PHP و Node وبناء الـ Assets
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 RUN npm install
 RUN npm run build
 
-# إعطاء الصلاحيات المباشرة لملفات الـ Storage والـ Cache
+# إعطاء الصلاحيات المباشرة
 RUN chmod -R 777 storage bootstrap/cache
 
+ENV SERVER_NAME=":8080"
 EXPOSE 8080
 
-# أمر التشغيل الذي يتكفل بالـ Routing وتوجيه كافة الطلبات إلى public/index.php
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && php -S 0.0.0.0:${PORT:-8080} router.php"]
+CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && frankenphp php-server --root public/"]
