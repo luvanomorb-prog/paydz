@@ -1,6 +1,6 @@
 FROM dunglas/frankenphp:latest-php8.3
 
-# تثبيت الحزم وإضافات PHP المطلوبة
+# 1. تثبيت الحزم وإضافات قاعدة البيانات المطلوب لـ Laravel
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -17,23 +17,20 @@ RUN apt-get update && apt-get install -y \
     zip \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# جلب Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
 WORKDIR /app
 
-# نسخ الملفات
+# 2. نسخ الملفات وتثبيت الاعتماديات (Composer مثبت مسبقاً في الصورة الرسمية)
 COPY . .
 
-# تثبيت حزم PHP و Node وبناء الـ Assets
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 RUN npm install
 RUN npm run build
 
-# إعطاء الصلاحيات المباشرة
+# 3. تعديل الصلاحيات للمجلدات
 RUN chmod -R 777 storage bootstrap/cache
 
+# 4. إعدادات FrankenPHP الخاصة بالتوجيه والمنافذ
 ENV SERVER_NAME=":8080"
 EXPOSE 8080
 
-CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && frankenphp php-server --root public/"]
+CMD ["sh", "-c", "php artisan migrate --force && php artisan storage:link || true && php artisan config:cache && php artisan route:cache && php artisan view:cache && frankenphp php-cli -S 0.0.0.0:${PORT:-8080} -t public/"]
