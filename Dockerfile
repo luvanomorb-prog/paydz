@@ -1,4 +1,7 @@
-FROM php:8.3-apache
+FROM php:8.4-apache
+
+# السماح لـ Composer بالعمل بحساب Root بدون تحذيرات
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # 1. تفعيل موديل mod_rewrite الخاص بالـ Routing في Apache
 RUN a2enmod rewrite
