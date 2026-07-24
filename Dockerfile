@@ -1,9 +1,10 @@
-FROM php:8.4-apache
+FROM php:8.4-fpm
 
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# 1. تثبيت الحزم والإضافات
+# 1. تثبيت Nginx والحزم والإضافات
 RUN apt-get update && apt-get install -y \
+    nginx \
     git \
     unzip \
     curl \
@@ -19,33 +20,47 @@ RUN apt-get update && apt-get install -y \
     zip \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. إزالة أي تعارض لـ MPM وتأكيد استخدام mpm_prefork و rewrite
-RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
- && a2enmod mpm_prefork rewrite
-
-# 3. تثبيت Composer
+# 2. تثبيت Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# 4. نسخ ملفات المشروع
+# 3. نسخ ملفات المشروع
 COPY . .
 
-# 5. ضبط مسار DocumentRoot ليكون public/
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# 6. تثبيت الحزم وبناء الواجهة
+# 4. تثبيت الحزم وبناء الواجهة
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 RUN npm install
 RUN npm run build
 
-# 7. ضبط الصلاحيات
+# 5. ضبط الصلاحيات
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
+# 6. إعداد Nginx المخصص لـ Laravel
+RUN echo 'server {\n\
+    listen 8080;\n\
+    server_name _;\n\
+    root /var/www/html/public;\n\
+    index index.php;\n\
+    charset utf-8;\n\
+\n\
+    location / {\n\
+        try_files $uri $uri/ /index.php?$query_string;\n\
+    }\n\
+\n\
+    location ~ \.php$ {\n\
+        fastcgi_pass 127.0.0.1:9000;\n\
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;\n\
+        include fastcgi_params;\n\
+    }\n\
+\n\
+    location ~ /\.ht {\n\
+        deny all;\n\
+    }\n\
+}' > /etc/nginx/sites-available/default
+
 EXPOSE 8080
 
-# 8. أمر التشغيل مع ربط المنفذ الديناميكي
-CMD ["sh", "-c", "sed -i \"s/80/${PORT:-8080}/g\" /etc/apache2/ports.conf /etc/apache2/sites-available/*.conf && php artisan migrate --force && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && apache2-foreground"]
+# 7. تشغيل PHP-FPM و Nginx معاً مع إعدادات Laravel
+CMD ["sh", "-c", "sed -i \"s/8080/${PORT:-8080}/g\" /etc/nginx/sites-available/default && php-fpm -D && php artisan migrate --force && php artisan storage:link || true && php artisan config:clear && php artisan route:clear && php artisan view:clear && nginx -g 'daemon off;'"]
